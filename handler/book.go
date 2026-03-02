@@ -7,6 +7,7 @@ import (
 	"michaelyusak/go-desent.git/entity"
 	"michaelyusak/go-desent.git/service"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
@@ -52,7 +53,45 @@ func (h *Book) CreateBook(ctx *gin.Context) {
 func (h *Book) GetAllBook(ctx *gin.Context) {
 	ctx.Header("Content-Type", "application/json")
 
-	books, err := h.bookService.GetAllBook(ctx)
+	var limit, page int
+
+	limitStr := ctx.Query("limit")
+	if limitStr != "" {
+		l, err := strconv.Atoi(limitStr)
+		if err != nil {
+			logrus.WithError(err).WithField("raw", limitStr).Warn("[handler][book][GetAllBook][strconv.Atoi(limitStr)]")
+
+			ctx.JSON(http.StatusBadRequest, map[string]string{
+				"message": err.Error(),
+			})
+			return
+		}
+		limit = l
+	}
+
+	pageStr := ctx.Query("page")
+	if pageStr != "" {
+		p, err := strconv.Atoi(pageStr)
+		if err != nil {
+			logrus.WithError(err).WithField("raw", pageStr).Warn("[handler][book][GetAllBook][strconv.Atoi(pageStr)]")
+
+			ctx.JSON(http.StatusBadRequest, map[string]string{
+				"message": err.Error(),
+			})
+			return
+		}
+		page = p
+	}
+
+	var filter entity.GetBookFilter
+
+	filter.Author = ctx.Query("author")
+	filter.Limit = limit
+	filter.Page = page
+
+	logrus.WithField("path", ctx.FullPath()).WithField("queries", fmt.Sprintf("%+v", filter)).Info("[handler][book][GetAllBook] filter parsed")
+
+	books, err := h.bookService.GetAllBook(ctx, filter)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, map[string]string{
 			"message": err.Error(),

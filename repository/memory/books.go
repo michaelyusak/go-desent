@@ -35,12 +35,35 @@ func (r *books) CreateOne(ctx context.Context, book *entity.Book) {
 	r.hotStorage[book.Id] = book
 }
 
-func (r *books) GetAll(ctx context.Context) []*entity.Book {
+func (r *books) GetAll(ctx context.Context, filter entity.GetBookFilter) []*entity.Book {
 	r.mu.Lock()
-	copy := r.storage
+	booksCopy := make([]*entity.Book, len(r.storage))
+	copy(booksCopy, r.storage)
 	r.mu.Unlock()
 
-	return copy
+	paged := filter.Page != 0 && filter.Limit != 0
+	skipped := 0
+
+	res := []*entity.Book{}
+
+	for _, book := range booksCopy {
+		if filter.Author != "" && filter.Author != book.Author {
+			continue
+		}
+
+		if paged && skipped < filter.Offset {
+			skipped++
+			continue
+		}
+
+		res = append(res, book)
+
+		if paged && len(res) == filter.Limit {
+			break
+		}
+	}
+
+	return res
 }
 
 func (r *books) GetById(ctx context.Context, id string) *entity.Book {

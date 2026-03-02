@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"michaelyusak/go-desent.git/apperror"
 	"michaelyusak/go-desent.git/entity"
 	"michaelyusak/go-desent.git/repository"
@@ -31,8 +32,14 @@ func (s *book) CreateBook(ctx context.Context, book *entity.Book) error {
 	return nil
 }
 
-func (s *book) GetAllBook(ctx context.Context) ([]*entity.Book, error) {
-	return s.booksRepo.GetAll(ctx), nil
+func (s *book) GetAllBook(ctx context.Context, filter entity.GetBookFilter) ([]*entity.Book, error) {
+	filter.Offset = (filter.Page - 1) * filter.Limit
+
+	books := s.booksRepo.GetAll(ctx, filter)
+
+	logrus.WithField("books", fmt.Sprintf("%+v", books)).WithField("count", len(books)).WithField("filter", fmt.Sprintf("%+v", filter)).Info("[service][book][GetAllBook] got books")
+
+	return books, nil
 }
 
 func (s *book) GetBookById(ctx context.Context, id string) (*entity.Book, error) {
